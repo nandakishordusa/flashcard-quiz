@@ -1,24 +1,74 @@
-import logo from './logo.svg';
+import { useEffect, useRef, useState } from 'react';
 import './App.css';
+import FlashCardList from './FlashCardList';
+import axios from 'axios';
+import Categories from './Categories';
 
 function App() {
+  const categoryEl = useRef()
+  const amountEl = useRef()
+  const [flashcards, setFlashCards] = useState([])
+
+
+  function decodeString(str) {
+    const textArea = document.createElement('textarea')
+    textArea.innerHTML = str
+    return textArea.value
+  }
+
+  function handleSubmit(e) {
+    e.preventDefault()
+    axios.get('https://opentdb.com/api.php?amount=10&difficulty=easy' , {
+      params: {
+        amount : amountEl.current.value,
+        category : categoryEl.current.value
+      }
+    })
+      .then(res => {
+        setFlashCards(res.data.results.map((questionItem, index) => {
+          const answer = decodeString(questionItem.correct_answer)
+          const options = [
+            ...questionItem.incorrect_answers.map(a => decodeString(a)), 
+            answer
+          ]
+          return {
+            id: `${index}-${Date.now()}`,
+            question: decodeString(questionItem.question),
+            answer: answer,
+            options: options.sort(() => Math.random() - .5)
+          }
+        }))
+      })
+  }
+  
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <>
+      <form className='header' onSubmit={handleSubmit}>
+        <div className='form-group'>
+          <label htmlFor='category'>Category</label>
+          <select id='category' ref={categoryEl}>
+            {
+              Categories.trivia_categories.map(category => {
+                return <option value={category.id} key={category.id}>
+                  {category.name}
+                </option>
+              })
+            }
+          </select>
+        </div>
+        <div className='form-group'>
+          <label htmlFor='amount'>Number Of Questions</label>
+          <input type='number' id='amount' min={1} step={1} defaultValue={10} ref={amountEl} />
+        </div>
+        <div className='form-group'>
+          <button className='btn' >Generate</button>
+        </div>
+      </form>
+      <div className='container'>
+        <FlashCardList flashcards={flashcards}/>
+      </div>
+    </>
+   
   );
 }
 
